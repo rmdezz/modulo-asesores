@@ -1,8 +1,9 @@
+// src/components/bulk-advisor/InfoCard.jsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Info } from 'lucide-react';
 
-const InfoCard = ({ type, title, message, buttonText, buttonIcon, onClick }) => {
+const InfoCard = ({ type, title, message, buttonText, buttonIcon, onClick, buttonDisabled = false }) => {
   const isWarning = type === 'warning';
   
   const bgColor = isWarning ? 'bg-yellow-50' : 'bg-blue-50';
@@ -35,6 +36,7 @@ const InfoCard = ({ type, title, message, buttonText, buttonIcon, onClick }) => 
               size="sm" 
               className={buttonColors}
               onClick={onClick}
+              disabled={buttonDisabled}
             >
               {buttonIcon}
               {buttonText}

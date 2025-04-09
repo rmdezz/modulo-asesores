@@ -6,7 +6,7 @@ import ProcessingStep from './ProcessingStep';
 import SuccessStep from './SuccessStep';
 import AreasDialog from './AreasDialog';
 
-const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
+const BulkAdvisorUpload = ({ onCancel, onSuccess, facultad = "Ingeniería", especialidad = "Informática" }) => {
   const [activeStep, setActiveStep] = useState('upload'); // upload, preview, processing, success
   const [isLoading, setIsLoading] = useState(false);
   const [fileSelected, setFileSelected] = useState(false);
@@ -18,6 +18,7 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [validationErrors, setValidationErrors] = useState([]);
   const [activeTab, setActiveTab] = useState('valid');
+  const [excludedRows, setExcludedRows] = useState([]);
   
   const itemsPerPage = 10;
 
@@ -39,7 +40,7 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
         // y validarías que todos los headers necesarios están presentes
         
         // Generate more realistic sample data
-        const mockData = generateMockData(50);
+        const mockData = generateMockData(50, facultad, especialidad);
         
         setPreviewData(mockData);
         setFileSelected(true);
@@ -75,7 +76,7 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
               advisor: `${item.nombres} ${item.apellidos}`,
               code: item.codigo,
               type: 'warning',
-              message: 'El asesor ya existe en el sistema con diferente especialidad'
+              message: 'El asesor ya existe en el sistema con diferente área temática'
             });
           } else {
             errors.push({
@@ -97,20 +98,17 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
       setFileName('');
       setPreviewData(null);
       setNewAreasDetected([]);
+      setValidationErrors([]);
+      setExcludedRows([]);
     }
   };
 
-  // Generate realistic advisor data
-  const generateMockData = (count) => {
-    const facultades = ['Ingeniería', 'Ciencias', 'Comunicaciones', 'Derecho', 'Arquitectura'];
-    const especialidades = [
-      'Sistemas', 'Informática', 'Electrónica', 'Industrial', 'Civil', 
-      'Matemáticas', 'Física', 'Periodismo', 'Ciencias Políticas', 'Arquitectura'
-    ];
+  // Generate realistic advisor data from the same faculty and specialty
+  const generateMockData = (count, facultad, especialidad) => {
     const areas = [
       'Inteligencia Artificial', 'Redes y Comunicaciones', 'Seguridad Informática',
-      'Estadística Aplicada', 'Comunicación Digital', 'Blockchain',
-      'IoT', 'Diseño de Software', 'Computación en la Nube', ''
+      'Estadística Aplicada', 'Blockchain', 'IoT', 'Diseño de Software', 
+      'Computación en la Nube', 'Ingeniería de Software', 'Bases de Datos Avanzadas', ''
     ];
     
     const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -118,21 +116,21 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
     return Array.from({ length: count }, (_, i) => {
       const nombres = [
         'Carlos Alberto', 'Ana María', 'Roberto', 'Luis', 'María Elena',
-        'Jorge', 'Patricia', 'Javier', 'Mónica', 'Daniel', 'Carmen', 'Eduardo'
-      ][Math.floor(Math.random() * 12)];
+        'Jorge', 'Patricia', 'Javier', 'Mónica', 'Daniel', 'Carmen', 'Eduardo',
+        'Rosa', 'Juan Pablo', 'Sofía', 'Miguel', 'Alejandra', 'Víctor', 'Lucía'
+      ][Math.floor(Math.random() * 19)];
       
       const apellidos = [
         'Ramírez López', 'Méndez Ortega', 'Torres Gutiérrez', 'García Castro',
-        'López Rivera', 'Martínez Solano', 'Fernández Díaz', 'Rodríguez Peña'
-      ][Math.floor(Math.random() * 8)];
+        'López Rivera', 'Martínez Solano', 'Fernández Díaz', 'Rodríguez Peña',
+        'Vargas Silva', 'Morales Quispe', 'Sánchez Flores', 'Díaz Vega',
+        'Paredes Acosta', 'Delgado Chávez', 'Herrera Paz', 'Medina Rojas'
+      ][Math.floor(Math.random() * 16)];
       
       // Generate numeric PUCP code with format: year (4 digits) + sequential number (4 digits)
       const year = getRandomInt(2015, 2023);
       const seq = getRandomInt(1000, 9999);
       const codigo = `${year}${seq}`;
-      
-      const especialidad = especialidades[Math.floor(Math.random() * especialidades.length)];
-      const facultad = facultades[Math.floor(Math.random() * facultades.length)];
       
       // Determine if this advisor has an area (80% chance)
       const area = Math.random() < 0.8 ? 
@@ -175,14 +173,36 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
     setActiveStep('upload');
   };
   
+  // Handle excluding rows with errors
+  const handleExcludeRow = (rowIndex) => {
+    if (excludedRows.includes(rowIndex)) {
+      setExcludedRows(excludedRows.filter(row => row !== rowIndex));
+    } else {
+      setExcludedRows([...excludedRows, rowIndex]);
+    }
+  };
+
+  // Handle excluding all rows with errors
+  const handleExcludeAllErrors = () => {
+    const errorRows = validationErrors
+      .filter(error => error.type === 'error')
+      .map(error => error.row);
+    
+    const newExcludedRows = [...new Set([...excludedRows, ...errorRows])];
+    setExcludedRows(newExcludedRows);
+  };
+  
   // Handle starting the processing
   const handleStartProcessing = () => {
+    // Filter out excluded rows from the data to process
+    const dataToProcess = previewData.filter((_, index) => !excludedRows.includes(index + 1));
+    
     setActiveStep('processing');
     // Simulate processing time
     setTimeout(() => {
       setActiveStep('success');
       // Notify parent component of success if callback exists
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(dataToProcess);
     }, 3000);
   };
   
@@ -200,11 +220,30 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
   
+  // Contenedor principal con padding
+  const containerStyle = {
+    padding: '24px', // Padding de 24px en todos los lados
+    maxWidth: '1280px', // Ancho máximo para evitar que se estire demasiado en pantallas grandes
+    margin: '0 auto', // Centrar el contenedor
+    backgroundColor: '#ffffff', // Fondo blanco
+    borderRadius: '8px', // Bordes redondeados
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', // Sombra ligera
+  };
+  
+  // Filtrar errores para mostrar solo los que no han sido excluidos
+  const activeErrors = validationErrors.filter(error => !excludedRows.includes(error.row));
+  
+  // Verificar si quedan errores críticos sin resolver
+  const hasCriticalErrors = activeErrors.some(error => error.type === 'error');
+
+  // Verificar cuántos registros serán procesados (total - excluidos)
+  const recordsToProcess = previewData ? previewData.length - excludedRows.length : 0;
+  
   // Render the appropriate step based on active step
-  switch (activeStep) {
-    case 'upload':
-      return (
-        <div className="space-y-6">
+  const renderStepContent = () => {
+    switch (activeStep) {
+      case 'upload':
+        return (
           <FileUploadStep 
             isLoading={isLoading}
             fileSelected={fileSelected}
@@ -214,66 +253,89 @@ const BulkAdvisorUpload = ({ onCancel, onSuccess }) => {
             existingAreas={existingAreas}
             handleFileChange={handleFileChange}
             handleGoToPreview={handleGoToPreview}
+            facultad={facultad}
+            especialidad={especialidad}
           />
-        </div>
-      );
-      
-    case 'preview':
-      return (
-        <div className="space-y-6">
-          <PreviewStep 
-            previewData={previewData}
-            validationErrors={validationErrors}
-            existingAreas={existingAreas}
-            newAreasDetected={newAreasDetected}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            currentData={currentData}
-            onBackToUpload={handleBackToUpload}
-            onShowAreasDialog={() => setShowAreasDialog(true)}
-            onPreviousPage={handlePreviousPage}
-            onNextPage={handleNextPage}
-            onStartProcessing={handleStartProcessing}
-            onCancel={onCancel}
-          />
-          
-          <AreasDialog 
-            open={showAreasDialog}
-            onOpenChange={setShowAreasDialog}
-            areas={newAreasDetected}
-            editingAreaIndex={editingAreaIndex}
-            onEditArea={handleEditArea}
-            onUpdateArea={handleUpdateArea}
-          />
-        </div>
-      );
-      
-    case 'processing':
-      return (
-        <div className="space-y-6">
-          <ProcessingStep />
-        </div>
-      );
-      
-    case 'success':
-      return (
-        <div className="space-y-6">
+        );
+        
+      case 'preview':
+        return (
+          <>
+            <PreviewStep 
+              previewData={previewData}
+              validationErrors={validationErrors}
+              existingAreas={existingAreas}
+              newAreasDetected={newAreasDetected}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              currentData={currentData}
+              onBackToUpload={handleBackToUpload}
+              onShowAreasDialog={() => setShowAreasDialog(true)}
+              onPreviousPage={handlePreviousPage}
+              onNextPage={handleNextPage}
+              onStartProcessing={handleStartProcessing}
+              onCancel={onCancel}
+              excludedRows={excludedRows}
+              onExcludeRow={handleExcludeRow}
+              onExcludeAllErrors={handleExcludeAllErrors}
+              activeErrors={activeErrors}
+              hasCriticalErrors={hasCriticalErrors}
+              recordsToProcess={recordsToProcess}
+              facultad={facultad}
+              especialidad={especialidad}
+            />
+            
+            <AreasDialog 
+              open={showAreasDialog}
+              onOpenChange={setShowAreasDialog}
+              areas={newAreasDetected}
+              editingAreaIndex={editingAreaIndex}
+              onEditArea={handleEditArea}
+              onUpdateArea={handleUpdateArea}
+              facultad={facultad}
+              especialidad={especialidad}
+            />
+          </>
+        );
+        
+      case 'processing':
+        return <ProcessingStep />;
+        
+      case 'success':
+        return (
           <SuccessStep 
-            previewData={previewData}
+            previewData={previewData.filter((_, index) => !excludedRows.includes(index + 1))}
             newAreasDetected={newAreasDetected}
-            validationErrors={validationErrors}
+            validationErrors={validationErrors.filter(error => !excludedRows.includes(error.row))}
             onCancel={onCancel}
+            facultad={facultad}
+            especialidad={especialidad}
+            excludedCount={excludedRows.length}
           />
-        </div>
-      );
+        );
+  
+      default:
+        return null;
+    }
+  };
 
-    default:
-      return null;
-  }
+  // Retornamos el contenedor con padding y el contenido del paso actual
+  return (
+    <div className="bg-gray-50 min-h-screen p-4">
+      <div style={containerStyle} className="shadow-md">
+        <div className="mb-4 pb-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-[#042354]">
+            Carga masiva de asesores - {facultad} ({especialidad})
+          </h2>
+        </div>
+        {renderStepContent()}
+      </div>
+    </div>
+  );
 };
 
 export default BulkAdvisorUpload;
