@@ -14,7 +14,10 @@ import {
   X,
   Ban,
   ArrowLeft,
-  Loader2
+  Loader2,
+  FileText,
+  Upload,
+  Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -87,6 +90,11 @@ const formSchema = z.object({
   tesistasSeleccionados: z.array(z.string()).min(1, "Debe seleccionar al menos un tesista"),
 });
 
+// Esquema de validación para justificación de cancelación
+const cancelacionSchema = z.object({
+  justificacion: z.string().min(10, "La justificación debe tener al menos 10 caracteres")
+});
+
 // Lista de motivos disponibles
 const motivosDisponibles = [
   { value: "licencia", label: "Licencia académica/personal" },
@@ -132,6 +140,31 @@ const EstadoSolicitud = ({ estado }) => {
   );
 };
 
+// Componente para mostrar archivo adjunto
+const ArchivoAdjunto = ({ archivo, mostrarEliminar = false, onEliminar }) => (
+  <div className="flex items-center justify-between p-2 bg-gray-50 border rounded-md mb-2">
+    <div className="flex items-center">
+      <FileText className="h-4 w-4 mr-2 text-blue-500" />
+      <div>
+        <p className="text-sm font-medium">{archivo.nombre}</p>
+        <p className="text-xs text-gray-500">
+          {(archivo.tamaño / 1024).toFixed(2)} KB • {format(new Date(archivo.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
+        </p>
+      </div>
+    </div>
+    {mostrarEliminar && (
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="h-8 w-8 p-0 text-red-500"
+        onClick={() => onEliminar(archivo.id)}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    )}
+  </div>
+);
+
 export default function EditarSolicitudCese({ 
   solicitud, 
   onGuardarCambios, 
@@ -147,6 +180,17 @@ export default function EditarSolicitudCese({
   const [activeTab, setActiveTab] = useState("detalles");
   const [guardando, setGuardando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  
+  // Estados para la justificación de cancelación
+  const [justificacionCancelacion, setJustificacionCancelacion] = useState("");
+  const [errorJustificacion, setErrorJustificacion] = useState("");
+  
+  // Estados para respuestas y archivos adjuntos
+  const [respuesta, setRespuesta] = useState("");
+  const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
+  const [cargandoArchivo, setCargandoArchivo] = useState(false);
+  const [enviandoRespuesta, setEnviandoRespuesta] = useState(false);
+  const [mostrarFormRespuesta, setMostrarFormRespuesta] = useState(false);
   
   // Inicializar el formulario con React Hook Form
   const form = useForm({
@@ -215,16 +259,24 @@ export default function EditarSolicitudCese({
   
   // Iniciar proceso de cancelación
   const iniciarCancelacion = () => {
+    setJustificacionCancelacion("");
+    setErrorJustificacion("");
     setDialogoCancelarAbierto(true);
   };
   
   // Confirmar cancelación de solicitud
   const confirmarCancelacion = async () => {
+    // Validar que la justificación no esté vacía
+    if (!justificacionCancelacion.trim() || justificacionCancelacion.trim().length < 10) {
+      setErrorJustificacion("Debe proporcionar una justificación de al menos 10 caracteres para cancelar la solicitud.");
+      return;
+    }
+    
     setCancelando(true);
     
     try {
       // Llamar a la función proporcionada por el componente padre
-      const resultado = await onCancelarSolicitud();
+      const resultado = await onCancelarSolicitud(justificacionCancelacion);
       
       if (resultado.success) {
         setDialogoCancelarAbierto(false);
@@ -235,6 +287,86 @@ export default function EditarSolicitudCese({
       alert("Ocurrió un error al cancelar la solicitud. Por favor, intente nuevamente.");
       setCancelando(false);
     }
+  };
+  
+  // Función para manejar la subida de archivos
+  const handleSubirArchivo = (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    
+    setCargandoArchivo(true);
+    
+    // Simulación de carga de archivo
+    setTimeout(() => {
+      // En un entorno real, aquí se subiría el archivo a un servidor
+      setArchivosAdjuntos([
+        ...archivosAdjuntos,
+        {
+          id: `archivo-${Date.now()}`,
+          nombre: archivo.name,
+          tipo: archivo.type,
+          tamaño: archivo.size,
+          fecha: new Date().toISOString()
+        }
+      ]);
+      setCargandoArchivo(false);
+    }, 1000);
+  };
+  
+  // Función para eliminar un archivo adjunto
+  const eliminarArchivo = (id) => {
+    setArchivosAdjuntos(archivosAdjuntos.filter(archivo => archivo.id !== id));
+  };
+  
+  // Función para enviar la respuesta al comentario
+  const enviarRespuesta = async () => {
+    if (!respuesta.trim()) return;
+    
+    setEnviandoRespuesta(true);
+    
+    // Simulación de envío de respuesta
+    setTimeout(() => {
+      // En un entorno real, aquí se enviaría la respuesta al servidor
+      const nuevaRespuesta = {
+        id: `resp-${Date.now()}`,
+        autor: "Asesor",
+        fecha: new Date().toISOString(),
+        texto: respuesta,
+        adjuntos: [...archivosAdjuntos]
+      };
+      
+      // Añadir la respuesta a los comentarios existentes
+      const comentariosActualizados = [
+        ...solicitud.comentarios,
+        nuevaRespuesta
+      ];
+      
+      // Actualizar el estado local
+      onGuardarCambios({
+        ...solicitud,
+        comentarios: comentariosActualizados,
+        modificaciones: [
+          ...solicitud.modificaciones,
+          {
+            fecha: new Date().toISOString(),
+            tipo: "respuesta",
+            detalles: "Se ha respondido a un comentario del coordinador"
+          }
+        ]
+      });
+      
+      // Limpiar el formulario
+      setRespuesta("");
+      setArchivosAdjuntos([]);
+      setMostrarFormRespuesta(false);
+      setEnviandoRespuesta(false);
+      
+      // Si estamos en el estado "pendiente_informacion", podríamos actualizar a "pendiente"
+      if (solicitud.estado === "pendiente_informacion") {
+        // En un entorno real, esto sería parte de la respuesta de la API
+        alert("Su respuesta ha sido enviada. La solicitud volverá a ser revisada por el coordinador.");
+      }
+    }, 1500);
   };
   
   return (
@@ -621,15 +753,35 @@ export default function EditarSolicitudCese({
                   {solicitud.comentarios.map((comentario, index) => (
                     <div 
                       key={index}
-                      className="p-4 border rounded-md"
+                      className={`p-4 border rounded-md ${
+                        comentario.autor === "Coordinador" ? "bg-blue-50/30 border-blue-200" : "bg-gray-50"
+                      }`}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="font-medium">{comentario.autor}</span>
+                        <span className={`font-medium ${
+                          comentario.autor === "Coordinador" ? "text-blue-800" : ""
+                        }`}>
+                          {comentario.autor}
+                        </span>
                         <span className="text-sm text-gray-500">
                           {format(new Date(comentario.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
                         </span>
                       </div>
                       <p className="mt-2">{comentario.texto}</p>
+                      
+                      {/* Mostrar archivos adjuntos si existen */}
+                      {comentario.adjuntos && comentario.adjuntos.length > 0 && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs text-gray-500 mb-2">Archivos adjuntos:</p>
+                          {comentario.adjuntos.map(archivo => (
+                            <ArchivoAdjunto 
+                              key={archivo.id} 
+                              archivo={archivo}
+                              onEliminar={() => {}} 
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                   
@@ -651,13 +803,36 @@ export default function EditarSolicitudCese({
                       </li>
                       
                       {/* Mostrar modificaciones si existen */}
-                      {solicitud.modificaciones && solicitud.modificaciones.filter(m => m.tipo === "edicion").map((mod, index) => (
+                      {solicitud.modificaciones && solicitud.modificaciones.filter(m => m.tipo !== "creacion").map((mod, index) => (
                         <li key={index} className="mb-10 ml-6">
-                          <span className="absolute flex items-center justify-center w-6 h-6 bg-green-100 rounded-full -left-3 ring-8 ring-white">
-                            <Pencil className="w-3 h-3 text-green-800" />
+                          <span className={`absolute flex items-center justify-center w-6 h-6 rounded-full -left-3 ring-8 ring-white ${
+                            mod.tipo === "edicion" 
+                              ? "bg-green-100"
+                              : mod.tipo === "solicitud_informacion"
+                              ? "bg-blue-100"
+                              : mod.tipo === "respuesta"
+                              ? "bg-purple-100"
+                              : "bg-gray-100"
+                          }`}>
+                            {mod.tipo === "edicion" ? (
+                              <Pencil className="w-3 h-3 text-green-800" />
+                            ) : mod.tipo === "solicitud_informacion" ? (
+                              <Info className="w-3 h-3 text-blue-800" />
+                            ) : mod.tipo === "respuesta" ? (
+                              <CheckCircle2 className="w-3 h-3 text-purple-800" />
+                            ) : (
+                              <Clock className="w-3 h-3 text-gray-800" />
+                            )}
                           </span>
                           <h3 className="flex items-center mb-1 text-lg font-semibold text-gray-900">
-                            Solicitud modificada
+                            {mod.tipo === "edicion" 
+                              ? "Solicitud modificada"
+                              : mod.tipo === "solicitud_informacion"
+                              ? "Información adicional solicitada"
+                              : mod.tipo === "respuesta"
+                              ? "Respuesta enviada"
+                              : "Actualización"
+                            }
                           </h3>
                           <time className="block mb-2 text-sm font-normal leading-none text-gray-400">
                             {format(new Date(mod.fecha), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: es })}
@@ -683,15 +858,96 @@ export default function EditarSolicitudCese({
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <Textarea 
-                  placeholder="Escriba la información solicitada por el coordinador..." 
-                  className="resize-none h-32 mb-4"
-                />
-                <div className="flex justify-end">
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    Enviar Información
-                  </Button>
-                </div>
+                {!mostrarFormRespuesta ? (
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={() => setMostrarFormRespuesta(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Responder a la solicitud
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Textarea 
+                      placeholder="Escriba su respuesta con la información solicitada por el coordinador..." 
+                      className="resize-none h-32 mb-4"
+                      value={respuesta}
+                      onChange={(e) => setRespuesta(e.target.value)}
+                    />
+                    
+                    {/* Archivos adjuntos */}
+                    {archivosAdjuntos.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-medium mb-2">Archivos adjuntos:</h4>
+                        {archivosAdjuntos.map(archivo => (
+                          <ArchivoAdjunto 
+                            key={archivo.id} 
+                            archivo={archivo} 
+                            mostrarEliminar={true}
+                            onEliminar={eliminarArchivo} 
+                          />
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Botón para subir archivos */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        onClick={() => document.getElementById('fileUpload').click()}
+                        disabled={cargandoArchivo}
+                      >
+                        {cargandoArchivo ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        Adjuntar archivo
+                      </Button>
+                      <input
+                        id="fileUpload"
+                        type="file"
+                        className="hidden"
+                        onChange={handleSubirArchivo}
+                        disabled={cargandoArchivo}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Formatos permitidos: PDF, JPG, PNG. Máximo 5MB.
+                      </p>
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setMostrarFormRespuesta(false);
+                          setRespuesta("");
+                          setArchivosAdjuntos([]);
+                        }}
+                        disabled={enviandoRespuesta}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        onClick={enviarRespuesta}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        disabled={enviandoRespuesta || !respuesta.trim()}
+                      >
+                        {enviandoRespuesta ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          "Enviar respuesta"
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
@@ -756,13 +1012,35 @@ export default function EditarSolicitudCese({
           </DialogHeader>
           
           <div className="py-4">
-            <Alert className="bg-amber-50 border-amber-200">
+            <Alert className="bg-amber-50 border-amber-200 mb-4">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <AlertTitle className="text-amber-800">Acción irreversible</AlertTitle>
               <AlertDescription className="text-amber-700">
                 Esta acción no se puede deshacer. La solicitud será cancelada y se notificará al coordinador.
               </AlertDescription>
             </Alert>
+            
+            <div className="space-y-2">
+              <label htmlFor="justificacion" className="text-sm font-medium">
+                Justificación de la cancelación <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="justificacion"
+                className={`w-full px-3 py-2 border rounded-md ${
+                  errorJustificacion ? "border-red-500" : "border-gray-300"
+                }`}
+                rows="3"
+                placeholder="Explique el motivo por el cual desea cancelar esta solicitud..."
+                value={justificacionCancelacion}
+                onChange={(e) => {
+                  setJustificacionCancelacion(e.target.value);
+                  if (e.target.value.trim()) setErrorJustificacion("");
+                }}
+              />
+              {errorJustificacion && (
+                <p className="text-sm text-red-500">{errorJustificacion}</p>
+              )}
+            </div>
           </div>
           
           <DialogFooter>

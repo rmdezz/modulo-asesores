@@ -217,10 +217,11 @@ export default function HistorialSolicitudesCese() {
   const [ordenarPor, setOrdenarPor] = useState("recientes");
   const [solicitudesFiltradas, setSolicitudesFiltradas] = useState(solicitudesEjemplo);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
-  const [dialogoDetallesAbierto, setDialogoDetallesAbierto] = useState(false);
   const [dialogoCancelarAbierto, setDialogoCancelarAbierto] = useState(false);
   const [cancelacionEnProceso, setCancelacionEnProceso] = useState(false);
-  
+  const [justificacionCancelacion, setJustificacionCancelacion] = useState("");
+  const [errorJustificacion, setErrorJustificacion] = useState("");
+
   // Filtrar solicitudes
   const filtrarSolicitudes = () => {
     let resultado = solicitudesEjemplo;
@@ -249,6 +250,8 @@ export default function HistorialSolicitudesCese() {
     
     setSolicitudesFiltradas(resultado);
   };
+
+  
   
   // Aplicar filtros cuando cambian los valores
   useEffect(() => {
@@ -257,24 +260,31 @@ export default function HistorialSolicitudesCese() {
   
   // Ver detalles de una solicitud
   const verDetalles = (solicitud) => {
-    setSolicitudSeleccionada(solicitud);
-    setDialogoDetallesAbierto(true);
+    router.push(`/asesor/cese-asesoria/solicitud/${solicitud.id}`);
   };
   
   // Ir a editar solicitud
   const irAEditarSolicitud = (solicitud) => {
     // En una implementación real, navegaríamos a la ruta con el ID correspondiente
-    router.push(`/asesor/cese-asesoria/editar/${solicitud.id}`);
+    router.push(`/asesor/cese-asesoria/solicitud/${solicitud.id}`);
   };
   
   // Iniciar cancelación de solicitud
   const iniciarCancelacion = (solicitud) => {
     setSolicitudSeleccionada(solicitud);
+    setJustificacionCancelacion(""); // Resetear la justificación
+    setErrorJustificacion(""); // Resetear el error
     setDialogoCancelarAbierto(true);
   };
   
   // Confirmar cancelación de solicitud
   const confirmarCancelacion = () => {
+    // Validar que la justificación no esté vacía
+    if (!justificacionCancelacion.trim()) {
+      setErrorJustificacion("Debe proporcionar una justificación para cancelar la solicitud.");
+      return;
+    }
+    
     setCancelacionEnProceso(true);
     
     // Simulación de API call
@@ -283,6 +293,9 @@ export default function HistorialSolicitudesCese() {
       setDialogoCancelarAbierto(false);
       
       // Aquí actualizaríamos el estado en una aplicación real
+      // Incluir la justificación en los datos enviados al servidor
+      console.log("Solicitud cancelada con justificación:", justificacionCancelacion);
+      
       alert("La solicitud ha sido cancelada exitosamente");
       
       // Actualizar la vista
@@ -475,128 +488,6 @@ export default function HistorialSolicitudesCese() {
         </Link>
       </div>
       
-      {/* Diálogo de detalles de solicitud */}
-      {solicitudSeleccionada && (
-        <Dialog open={dialogoDetallesAbierto} onOpenChange={setDialogoDetallesAbierto}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                Solicitud {solicitudSeleccionada.id}
-                <span className="ml-2">
-                  <EstadoSolicitud estado={solicitudSeleccionada.estado} />
-                </span>
-              </DialogTitle>
-              <DialogDescription>
-                Detalles de la solicitud de cese de asesoría
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-1">Fecha de solicitud</h4>
-                  <p>{format(parseISO(solicitudSeleccionada.fechaSolicitud), "dd 'de' MMMM 'de' yyyy", { locale: es })}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-1">Fecha límite indicada</h4>
-                  <p>{format(parseISO(solicitudSeleccionada.fechaLimite), "dd 'de' MMMM 'de' yyyy", { locale: es })}</p>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Motivo</h4>
-                <p>{solicitudSeleccionada.motivoTexto}</p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Tesistas afectados</h4>
-                <ul className="list-disc pl-5 space-y-1">
-                  {solicitudSeleccionada.tesistas.map((tesista) => (
-                    <li key={tesista.id}>{tesista.nombre}</li>
-                  ))}
-                </ul>
-              </div>
-              
-              {solicitudSeleccionada.comentarios.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-1">Comentarios</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {solicitudSeleccionada.comentarios.map((comentario) => (
-                      <div 
-                        key={comentario.id} 
-                        className="bg-gray-50 p-3 rounded-md border text-sm"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{comentario.autor}</span>
-                          <span className="text-xs text-gray-500">
-                            {format(parseISO(comentario.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
-                          </span>
-                        </div>
-                        <p className="mt-1">{comentario.texto}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {solicitudSeleccionada.estado === "aprobado" && solicitudSeleccionada.nuevoAsesor && (
-                <div className="bg-green-50 p-3 rounded-md border border-green-200">
-                  <h4 className="text-sm font-medium text-green-800 mb-1">Nuevo asesor asignado</h4>
-                  <p className="text-sm">{solicitudSeleccionada.nuevoAsesor.nombre}</p>
-                  <p className="text-sm text-green-700">{solicitudSeleccionada.nuevoAsesor.correo}</p>
-                </div>
-              )}
-              
-              {solicitudSeleccionada.estado === "pendiente_informacion" && (
-                <Alert className="bg-blue-50 border-blue-200">
-                  <Info className="h-4 w-4 text-blue-500" />
-                  <AlertTitle>Acción requerida</AlertTitle>
-                  <AlertDescription>
-                    Se ha solicitado información adicional. Por favor, proporcione la información solicitada para continuar con el proceso.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-            
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              {puedeSerEditada(solicitudSeleccionada) && (
-                <>
-                  <Button 
-                    variant="outline"
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    onClick={() => {
-                      setDialogoDetallesAbierto(false);
-                      irAEditarSolicitud(solicitudSeleccionada);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Editar Solicitud
-                  </Button>
-                  
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => {
-                      setDialogoDetallesAbierto(false);
-                      iniciarCancelacion(solicitudSeleccionada);
-                    }}
-                  >
-                    <Ban className="h-4 w-4 mr-2" />
-                    Cancelar Solicitud
-                  </Button>
-                </>
-              )}
-              
-              <Button 
-                variant="outline" 
-                onClick={() => setDialogoDetallesAbierto(false)}
-              >
-                Cerrar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-      
       {/* Diálogo de confirmación de cancelación */}
       {solicitudSeleccionada && (
         <Dialog open={dialogoCancelarAbierto} onOpenChange={setDialogoCancelarAbierto}>
@@ -609,13 +500,35 @@ export default function HistorialSolicitudesCese() {
             </DialogHeader>
             
             <div className="py-4">
-              <Alert variant="warning" className="bg-amber-50 border-amber-200">
+              <Alert variant="warning" className="bg-amber-50 border-amber-200 mb-4">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <AlertTitle className="text-amber-800">Acción irreversible</AlertTitle>
                 <AlertDescription className="text-amber-700">
                   Esta acción no se puede deshacer. La solicitud será cancelada y se notificará al coordinador.
                 </AlertDescription>
               </Alert>
+              
+              <div className="space-y-2">
+                <label htmlFor="justificacion" className="text-sm font-medium">
+                  Justificación de la cancelación <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="justificacion"
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errorJustificacion ? "border-red-500" : "border-gray-300"
+                  }`}
+                  rows="3"
+                  placeholder="Explique el motivo por el cual desea cancelar esta solicitud..."
+                  value={justificacionCancelacion}
+                  onChange={(e) => {
+                    setJustificacionCancelacion(e.target.value);
+                    if (e.target.value.trim()) setErrorJustificacion("");
+                  }}
+                />
+                {errorJustificacion && (
+                  <p className="text-sm text-red-500">{errorJustificacion}</p>
+                )}
+              </div>
             </div>
             
             <DialogFooter>

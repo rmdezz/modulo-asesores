@@ -15,7 +15,9 @@ import {
   Filter,
   AlertCircle, // Icon for warning
   ToggleLeft, // Icon for marking inactive
-  ToggleRight // Icon for marking active
+  ToggleRight, // Icon for marking active
+  ChevronLeft, // Icon for previous page
+  ChevronRight // Icon for next page
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,13 +55,17 @@ import { useRouter } from "next/navigation";
 import ExpandableTags from "@/components/ExpandableTags";
 
 export default function Asesores() {
-    const router = useRouter();
+  const router = useRouter();
 
   // Estados principales
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all"); // New state for status filter
+  const [statusFilter, setStatusFilter] = useState("all"); // State for status filter
   const [advisors, setAdvisors] = useState([]);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Estado para el diálogo de advertencia
   const [showWarningDialog, setShowWarningDialog] = useState(false);
@@ -71,7 +77,10 @@ export default function Asesores() {
     "Desarrollo de Software",
     "Redes y Seguridad",
     "Ciencia de Datos",
-    "Sistemas de Información"
+    "Sistemas de Información",
+    "Interacción Humano-Computador",
+    "Computación Gráfica",
+    "Computación en la Nube"
   ];
   
   // Opciones de estado
@@ -90,8 +99,8 @@ export default function Asesores() {
         correo: "cramirez@pucp.edu.pe",
         areaTematica: "Inteligencia Artificial",
         temasInteres: ["Machine Learning", "Redes Neuronales", "Procesamiento de Lenguaje Natural"],
-        estado: "Activo", // RF71: Added status field
-        tesisActivasCount: 2 // RF71: Added active thesis count
+        estado: "Activo",
+        tesisActivasCount: 2
       },
       {
         id: "2",
@@ -114,7 +123,7 @@ export default function Asesores() {
         correo: "jmendoza@pucp.edu.pe",
         areaTematica: "Redes y Seguridad",
         temasInteres: ["Ciberseguridad", "Redes Inalámbricas", "Seguridad en la Nube"],
-        estado: "Inactivo", // Example of Inactive
+        estado: "Inactivo",
         tesisActivasCount: 0
       },
       {
@@ -140,6 +149,187 @@ export default function Asesores() {
         temasInteres: ["ERP", "Gestión de Procesos", "Transformación Digital"],
         estado: "Activo",
         tesisActivasCount: 0
+      },
+      // Nuevos datos agregados
+      {
+        id: "6",
+        nombres: "Lucía",
+        apellidoPaterno: "Ortega",
+        apellidoMaterno: "Miranda",
+        codigo: "20154321",
+        correo: "lortega@pucp.edu.pe",
+        areaTematica: "Interacción Humano-Computador",
+        temasInteres: ["Experiencia de Usuario", "Diseño de Interfaces", "Accesibilidad Web"],
+        estado: "Activo",
+        tesisActivasCount: 3
+      },
+      {
+        id: "7",
+        nombres: "Miguel Ángel",
+        apellidoPaterno: "Vargas",
+        apellidoMaterno: "Herrera",
+        codigo: "20185432",
+        correo: "mvargas@pucp.edu.pe",
+        areaTematica: "Computación Gráfica",
+        temasInteres: ["Animación 3D", "Renderizado", "Realidad Virtual"],
+        estado: "Activo",
+        tesisActivasCount: 1
+      },
+      {
+        id: "8",
+        nombres: "Gabriela",
+        apellidoPaterno: "Fuentes",
+        apellidoMaterno: "Rivera",
+        codigo: "20193210",
+        correo: "gfuentes@pucp.edu.pe",
+        areaTematica: "Inteligencia Artificial",
+        temasInteres: ["Visión por Computadora", "Robótica", "Sistemas Expertos"],
+        estado: "Inactivo",
+        tesisActivasCount: 0
+      },
+      {
+        id: "9",
+        nombres: "Héctor",
+        apellidoPaterno: "Navarro",
+        apellidoMaterno: "Méndez",
+        codigo: "20172345",
+        correo: "hnavarro@pucp.edu.pe",
+        areaTematica: "Computación en la Nube",
+        temasInteres: ["AWS", "Microservicios", "Contenedores"],
+        estado: "Activo",
+        tesisActivasCount: 2
+      },
+      {
+        id: "10",
+        nombres: "Valentina",
+        apellidoPaterno: "Rojas",
+        apellidoMaterno: "Paredes",
+        codigo: "20186789",
+        correo: "vrojas@pucp.edu.pe",
+        areaTematica: "Desarrollo de Software",
+        temasInteres: ["Desarrollo Móvil", "Progressive Web Apps", "Flutter"],
+        estado: "Activo",
+        tesisActivasCount: 0
+      },
+      {
+        id: "11",
+        nombres: "Alejandro",
+        apellidoPaterno: "Peralta",
+        apellidoMaterno: "Jiménez",
+        codigo: "20164567",
+        correo: "aperalta@pucp.edu.pe",
+        areaTematica: "Ciencia de Datos",
+        temasInteres: ["Aprendizaje Automático", "Minería de Datos", "Estadística Computacional"],
+        estado: "Activo",
+        tesisActivasCount: 4
+      },
+      {
+        id: "12",
+        nombres: "Sofía",
+        apellidoPaterno: "Morales",
+        apellidoMaterno: "Campos",
+        codigo: "20208765",
+        correo: "smorales@pucp.edu.pe",
+        areaTematica: "Redes y Seguridad",
+        temasInteres: ["Seguridad IoT", "Análisis de Vulnerabilidades", "Hacking Ético"],
+        estado: "Inactivo",
+        tesisActivasCount: 0
+      },
+      {
+        id: "13",
+        nombres: "Daniel",
+        apellidoPaterno: "Vega",
+        apellidoMaterno: "Espinoza",
+        codigo: "20195678",
+        correo: "dvega@pucp.edu.pe",
+        areaTematica: "Sistemas de Información",
+        temasInteres: ["Business Intelligence", "CRM", "Sistemas de Gestión Documental"],
+        estado: "Activo",
+        tesisActivasCount: 1
+      },
+      {
+        id: "14",
+        nombres: "Carolina",
+        apellidoPaterno: "Lagos",
+        apellidoMaterno: "Soto",
+        codigo: "20171234",
+        correo: "clagos@pucp.edu.pe",
+        areaTematica: "Interacción Humano-Computador",
+        temasInteres: ["Diseño Centrado en el Usuario", "Evaluación de Usabilidad", "Interfaces Gestuales"],
+        estado: "Activo",
+        tesisActivasCount: 2
+      },
+      {
+        id: "15",
+        nombres: "Fernando",
+        apellidoPaterno: "Ruiz",
+        apellidoMaterno: "Molina",
+        codigo: "20184567",
+        correo: "fruiz@pucp.edu.pe",
+        areaTematica: "Computación Gráfica",
+        temasInteres: ["Videojuegos", "Modelado 3D", "Efectos Visuales"],
+        estado: "Activo",
+        tesisActivasCount: 0
+      },
+      {
+        id: "16",
+        nombres: "María José",
+        apellidoPaterno: "Álvarez",
+        apellidoMaterno: "Pinto",
+        codigo: "20202468",
+        correo: "malvarez@pucp.edu.pe",
+        areaTematica: "Inteligencia Artificial",
+        temasInteres: ["Agentes Inteligentes", "Sistemas Multiagente", "Aprendizaje por Refuerzo"],
+        estado: "Activo",
+        tesisActivasCount: 1
+      },
+      {
+        id: "17",
+        nombres: "Joaquín",
+        apellidoPaterno: "Castro",
+        apellidoMaterno: "Valenzuela",
+        codigo: "20191357",
+        correo: "jcastro@pucp.edu.pe",
+        areaTematica: "Computación en la Nube",
+        temasInteres: ["DevOps", "Serverless", "Azure"],
+        estado: "Inactivo",
+        tesisActivasCount: 0
+      },
+      {
+        id: "18",
+        nombres: "Isabel",
+        apellidoPaterno: "Medina",
+        apellidoMaterno: "Fuentes",
+        codigo: "20169876",
+        correo: "imedina@pucp.edu.pe",
+        areaTematica: "Desarrollo de Software",
+        temasInteres: ["Clean Code", "Testing", "Integración Continua"],
+        estado: "Activo",
+        tesisActivasCount: 3
+      },
+      {
+        id: "19",
+        nombres: "Rodrigo",
+        apellidoPaterno: "Guzmán",
+        apellidoMaterno: "Torres",
+        codigo: "20183456",
+        correo: "rguzman@pucp.edu.pe",
+        areaTematica: "Ciencia de Datos",
+        temasInteres: ["Procesamiento de Señales", "Reconocimiento de Patrones", "Sistemas de Recomendación"],
+        estado: "Activo",
+        tesisActivasCount: 0
+      },
+      {
+        id: "20",
+        nombres: "Camila",
+        apellidoPaterno: "Herrera",
+        apellidoMaterno: "Rojas",
+        codigo: "20207890",
+        correo: "cherrera@pucp.edu.pe",
+        areaTematica: "Redes y Seguridad",
+        temasInteres: ["Seguridad en Aplicaciones Web", "Blockchain", "Criptografía"],
+        estado: "Activo",
+        tesisActivasCount: 1
       }
     ];
     
@@ -162,6 +352,30 @@ export default function Asesores() {
     
     return matchesSearch && matchesAreaFilter && matchesStatusFilter;
   });
+  
+  // Calculate pagination indexes
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredAdvisors.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredAdvisors.length / itemsPerPage);
+  
+  // Pagination handlers
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+  
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+  
+  // Reset to first page when filters change or items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeFilter, statusFilter, itemsPerPage]);
   
   // Función para manejar el cambio de estado (HU19)
   const handleToggleStatus = (advisorId) => {
@@ -352,7 +566,7 @@ export default function Asesores() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAdvisors.map((advisor) => (
+                {currentItems.map((advisor) => (
                   <TableRow key={advisor.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium align-top">
                       {advisor.nombres} {advisor.apellidoPaterno} {advisor.apellidoMaterno}
@@ -463,13 +677,54 @@ export default function Asesores() {
           </div>
         )}
         
-        {/* Información de paginación (sin cambios funcionales) */}
+        {/* Paginación actualizada */}
         {filteredAdvisors.length > 0 && (
-          <div className="mt-6 flex justify-between items-center text-sm text-gray-500">
-            <span>Mostrando {filteredAdvisors.length} de {advisors.length} asesores</span>
+          <div className="mt-6 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500 gap-4">
+            <span>Mostrando {Math.min(indexOfFirstItem + 1, filteredAdvisors.length)} - {Math.min(indexOfLastItem, filteredAdvisors.length)} de {filteredAdvisors.length} asesores</span>
             <div className="flex items-center gap-2">
-              {/* Paginación real pendiente */}
-            </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={goToPreviousPage} 
+                disabled={currentPage === 1}
+                className="h-8 px-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Página anterior</span>
+              </Button>
+              
+              {/* Current page indicator */}
+              <span className="text-sm font-medium">
+                Página {currentPage} de {totalPages}
+              </span>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={goToNextPage} 
+                disabled={currentPage === totalPages}
+                className="h-8 px-2"
+              >
+                <span className="sr-only">Página siguiente</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              
+              {/* Page size selector */}
+              <div className="flex items-center gap-2 ml-4">
+                <span className="text-xs text-gray-500">Mostrar:</span>
+                <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+                  <SelectTrigger className="h-8 w-20 border-gray-200 text-xs">
+                    <SelectValue placeholder="10" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              </div>
           </div>
         )}
       </div>

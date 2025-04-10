@@ -547,7 +547,7 @@ export default function Sidebar({ className, userRole = "coordinador", estadisti
                   size="sm"
                 >
                   <ClipboardList className="h-4 w-4 mr-2" />
-                  Historial
+                  Mis Solicitudes de Cese
                 </Button>
               </Link>
             </CollapsibleContent>
